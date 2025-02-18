@@ -4,14 +4,14 @@ const readlineSync = require('readline-sync');
 
 // Load JSON data
 const jsonData = JSON.parse(fs.readFileSync('students.json', 'utf8'));
-const { class: className, students } = jsonData;
+const { class: className } = jsonData;
 
 // Get user login credentials
 const email = readlineSync.question('Enter your email: ');
 const password = readlineSync.question('Enter your password: ', { hideEchoBack: true });
 
-if (!className || students.length === 0) {
-    console.error("❌ Error: No valid class or student data found.");
+if (!className) {
+    console.error("❌ Error: No valid class found.");
     process.exit(1);
 }
 
@@ -54,23 +54,29 @@ if (!className || students.length === 0) {
 
     console.log('✅ Clicked "Transfer Students" tab!');
 
-    // ✅ Step 5: Select Class (Forcing Interaction)
+    // ✅ Step 5: Select Class Inside the Modal
     try {
-        await page.waitForSelector('div.multiselect', { visible: true, timeout: 60000 });
+        // Wait for modal to appear
+        await page.waitForSelector('#transfer-student > div > div:nth-child(2) > div.multiselect__tags > span.multiselect__placeholder', { visible: true, timeout: 6000 });
 
-        // Click the Select Class dropdown to activate it
-        await page.click('div.multiselect');
+        const classInputSelector = '#transfer-student > div > div:nth-child(2) > div.multiselect__tags > span.multiselect__placeholder';
+
+        // Click the "Select Class" input inside the modal
+        await page.click(classInputSelector);
+        console.log('✅ Clicked "Select Class"!');
 
         // Wait for input field and type class name
-        await page.waitForSelector('input.multiselect__input', { visible: true });
-        await page.type('input.multiselect__input', className, { delay: 100 });
+        await page.waitForSelector(classInputSelector, { visible: true });
+        await page.type(classInputSelector, className, { delay: 10 });
 
         console.log(`🔹 Entered Class: ${className}`);
 
-        // Wait for dropdown and select correct match
-        await page.waitForSelector('.multiselect__content li', { visible: true, timeout: 60000 });
+        // Wait for dropdown and select correct class
+        const dropdownSelector = '#null-0 > span > span';
+        await page.waitForSelector(dropdownSelector, { visible: true, timeout: 6000 });
+
         await page.evaluate((className) => {
-            document.querySelectorAll('.multiselect__content li span.multiselect__option span').forEach((option) => {
+            document.querySelectorAll('#null-0 > span > span').forEach((option) => {
                 if (option.innerText.trim() === className) {
                     option.click();
                 }
@@ -79,41 +85,10 @@ if (!className || students.length === 0) {
 
         console.log(`✅ Selected Class: ${className}`);
     } catch (error) {
-        console.error(`❌ Error: Unable to select class '${className}'. Check if the selector is correct.`);
+        console.error(`❌ Error: Unable to select class '${className}'.`);
         await browser.close();
         process.exit(1);
     }
 
-    // ✅ Step 6: Loop through all students
-    for (let student of students) {
-        console.log(`🔹 Processing student: ${student}`);
-
-        try {
-            await page.waitForSelector('div.multiselect', { visible: true, timeout: 60000 });
-
-            // Click the Select Student dropdown to activate it
-            await page.click('div.multiselect');
-
-            // Wait for input field and type student name
-            await page.waitForSelector('input.multiselect__input', { visible: true });
-            await page.type('input.multiselect__input', student, { delay: 100 });
-
-            // Wait for dropdown and select correct match
-            await page.waitForSelector('.multiselect__content li', { visible: true, timeout: 60000 });
-            await page.evaluate((student) => {
-                document.querySelectorAll('.multiselect__content li span.multiselect__option span').forEach((option) => {
-                    if (option.innerText.trim() === student) {
-                        option.click();
-                    }
-                });
-            }, student);
-
-            console.log(`✅ Selected student: ${student}`);
-        } catch (error) {
-            console.error(`❌ Error: Unable to select student '${student}'. Skipping.`);
-            continue;
-        }
-    }
-
-    console.log('🎉 All students processed successfully!');
+    console.log('🎉 Successfully selected class!');
 })();
